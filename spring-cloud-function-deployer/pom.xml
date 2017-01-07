@@ -12,6 +12,7 @@
 		<groupId>org.springframework.cloud</groupId>
 		<artifactId>spring-cloud-function-parent</artifactId>
 		<version>1.0.0.BUILD-SNAPSHOT</version>
+		<relativePath>..</relativePath>
 	</parent>
 
 	<properties>

@@ -21,6 +21,8 @@ import java.util.function.Supplier;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.support.MessageBuilder;
 
 import reactor.core.publisher.Flux;
 
@@ -28,8 +30,9 @@ import reactor.core.publisher.Flux;
 public class SampleApplication {
 
 	@Bean
-	public Function<Flux<Foo>, Flux<Bar>> uppercase() {
-		return flux -> flux.log().map(value -> new Bar(value.uppercase()));
+	public Function<Flux<Message<Foo>>, Flux<Message<Bar>>> uppercase() {
+		return flux -> flux.log().map(value -> MessageBuilder
+				.withPayload(new Bar(value.getPayload().uppercase())).build());
 	}
 
 	@Bean

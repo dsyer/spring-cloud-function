@@ -49,12 +49,10 @@
 					<filters>
 						<filter>
 							<includes>
-								<include>org/springframework/messaging/*</include>
+								<include>org/springframework/messaging/Message.*</include>
+								<include>org/springframework/messaging/MessageHeaders.*</include>
 								<include>META-INF/*</include>
 							</includes>
-							<excludes>
-								<exclude>org/springframework/messaging/*/*</exclude>
-							</excludes>
 						</filter>
 					</filters>
 				</configuration>

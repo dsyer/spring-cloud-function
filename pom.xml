@@ -49,6 +49,7 @@
 	</dependencyManagement>
 
 	<modules>
+		<module>spring-cloud-function-messaging</module>
 		<module>spring-cloud-function-compiler</module>
 		<module>spring-cloud-function-core</module>
 		<module>spring-cloud-function-context</module>

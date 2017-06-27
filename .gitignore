@@ -22,3 +22,4 @@ _site/
 coverage-error.log
 .apt_generated
 credentials.yml
+dependency-reduced-pom.xml

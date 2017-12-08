@@ -51,7 +51,7 @@ public class AzureSpringFunctionInitializer implements Closeable {
 	@Autowired(required = false)
 	private FunctionCatalog catalog;
 
-	private ConfigurableApplicationContext context;
+	private static ConfigurableApplicationContext context;
 
 	public AzureSpringFunctionInitializer(Class<?> configurationClass) {
 		this.configurationClass = configurationClass;
@@ -64,23 +64,35 @@ public class AzureSpringFunctionInitializer implements Closeable {
 
 	@Override
 	public void close() throws IOException {
-		if (this.context != null) {
-			this.context.close();
+		if (AzureSpringFunctionInitializer.context != null) {
+			AzureSpringFunctionInitializer.context.close();
 		}
 	}
 
 	@SuppressWarnings("unchecked")
 	protected void initialize(ExecutionContext ctxt) {
+
+		ConfigurableApplicationContext context = AzureSpringFunctionInitializer.context;
+		
 		if (!this.initialized.compareAndSet(false, true)) {
 			return;
 		}
 		ctxt.getLogger().info("Initializing function");
+		
+		if (context==null) {
+			synchronized (AzureSpringFunctionInitializer.class) {
+				if (context==null) {
+					SpringApplicationBuilder builder = new SpringApplicationBuilder(
+							configurationClass);
+					ClassUtils.overrideThreadContextClassLoader(AzureSpringFunctionInitializer.class.getClassLoader());
 
-		SpringApplicationBuilder builder = new SpringApplicationBuilder(
-				configurationClass);
-		ClassUtils.overrideThreadContextClassLoader(AzureSpringFunctionInitializer.class.getClassLoader());
+					context = builder.web(false).run();
+					AzureSpringFunctionInitializer.context = context;
+				}
+			}
+			
+		}
 
-		ConfigurableApplicationContext context = builder.web(false).run();
 		context.getAutowireCapableBeanFactory().autowireBean(this);
 		String name = context.getEnvironment().getProperty("function.name");
 
@@ -94,7 +106,6 @@ public class AzureSpringFunctionInitializer implements Closeable {
 			Set<String> functionNames = this.catalog.getFunctionNames();
 			this.function = this.catalog.lookupFunction(functionNames.iterator().next());
 		}
-		this.context = context;
 	}
 
 	protected Flux<?> apply(Flux<?> input) {

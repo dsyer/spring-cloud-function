@@ -29,7 +29,7 @@ import reactor.core.publisher.Flux;
 public class AzureSpringBootRequestHandler<I,O> extends AzureSpringFunctionInitializer {
 
 	public Object handleRequest(I foo, ExecutionContext context) {
-		context.getLogger().info("AHandlers's Java HTTP trigger processed a request.");
+		context.getLogger().info("Handler Java HTTP trigger processed a request.");
 		initialize(context);
 
 		Object convertedEvent = convertEvent(foo);

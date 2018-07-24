@@ -63,6 +63,7 @@
 		<module>spring-cloud-function-context</module>
 		<module>spring-cloud-function-task</module>
 		<module>spring-cloud-function-web</module>
+		<module>spring-cloud-function-webflux</module>
 		<module>spring-cloud-starter-function-web</module>
 		<module>spring-cloud-function-samples</module>
 		<module>spring-cloud-function-deployer</module>

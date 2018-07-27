@@ -84,7 +84,7 @@ public class FunctionController {
 
 	@PostMapping(path = "/**", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
 	@ResponseBody
-	public Mono<ResponseEntity<Publisher<?>>> form(ServerWebExchange request) {
+	public Mono<ResponseEntity<?>> form(ServerWebExchange request) {
 		Object function = request.getAttribute(WebRequestConstants.FUNCTION);
 		if (function == null) {
 			function = request.getAttribute(WebRequestConstants.CONSUMER);
@@ -94,7 +94,7 @@ public class FunctionController {
 
 	@PostMapping(path = "/**")
 	@ResponseBody
-	public Mono<ResponseEntity<Publisher<?>>> post(ServerWebExchange request,
+	public Mono<ResponseEntity<?>> post(ServerWebExchange request,
 			@RequestBody(required = false) String body) {
 		Object function = request.getAttribute(WebRequestConstants.FUNCTION);
 		if (function == null) {
@@ -122,7 +122,7 @@ public class FunctionController {
 		return post(request, input);
 	}
 
-	private Mono<ResponseEntity<Publisher<?>>> post(ServerWebExchange request,
+	private Mono<ResponseEntity<?>> post(ServerWebExchange request,
 			Object body) {
 		if (body instanceof List) {
 			return post(request, (List<?>) body, null);
@@ -131,7 +131,7 @@ public class FunctionController {
 		return post(request, Collections.singletonList(body), null);
 	}
 
-	private Mono<ResponseEntity<Publisher<?>>> post(ServerWebExchange request,
+	private Mono<ResponseEntity<?>> post(ServerWebExchange request,
 			List<?> body, MultiValueMap<String, String> params) {
 
 		@SuppressWarnings("unchecked")
@@ -157,7 +157,7 @@ public class FunctionController {
 		}
 		if (function != null) {
 			Flux<?> result = Flux.from(function.apply(flux));
-			return response(request, function, result, single);
+			return response(request, function, result, single, false);
 		}
 
 		if (consumer != null) {
@@ -183,8 +183,8 @@ public class FunctionController {
 		builder.headers(HeaderUtils.fromMessage(message.getHeaders(), headers));
 	}
 
-	private Mono<ResponseEntity<Publisher<?>>> response(ServerWebExchange request,
-			Object handler, Publisher<?> result, Boolean single) {
+	private Mono<ResponseEntity<?>> response(ServerWebExchange request,
+			Object handler, Publisher<?> result, Boolean single, boolean getter) {
 
 		BodyBuilder builder = ResponseEntity.ok();
 		if (inspector.isMessage(handler)) {
@@ -192,21 +192,22 @@ public class FunctionController {
 					.doOnNext(value -> addHeaders(builder, (Message<?>) value))
 					.map(message -> MessageUtils.unpack(handler, message).getPayload());
 		}
-		if (logger.isDebugEnabled()) {
-			logger.debug("Handled POST with function");
-		}
 
 		if (single != null && single && isOutputSingle(handler)) {
 			result = Mono.from(result);
 		}
-		else if (single == null && isOutputSingle(handler)) {
+		else if (getter && single == null && isOutputSingle(handler)) {
 			result = Mono.from(result);
 		}
 		else if (isInputMultiple(handler) && isOutputSingle(handler)) {
 			result = Mono.from(result);
 		}
 		Publisher<?> output = result;
-		return Flux.from(result).then(Mono.fromSupplier(() -> builder.body(output)));
+		if (result instanceof Mono) {
+			return Mono.from(output).flatMap(body -> Mono.just(builder.body(body)));
+		}
+		return Flux.from(result).collectList()
+				.flatMap(body -> Mono.just(builder.body(body)));
 	}
 
 	private boolean isInputMultiple(Object handler) {
@@ -229,7 +230,7 @@ public class FunctionController {
 
 	@GetMapping(path = "/**")
 	@ResponseBody
-	public Mono<ResponseEntity<Publisher<?>>> get(ServerWebExchange request) {
+	public Mono<ResponseEntity<?>> get(ServerWebExchange request) {
 		@SuppressWarnings("unchecked")
 		Function<Publisher<?>, Publisher<?>> function = (Function<Publisher<?>, Publisher<?>>) request
 				.getAttribute(WebRequestConstants.FUNCTION);
@@ -239,10 +240,10 @@ public class FunctionController {
 		String argument = (String) request.getAttribute(WebRequestConstants.ARGUMENT);
 
 		if (function != null) {
-			return response(request, function, value(function, argument), true);
+			return response(request, function, value(function, argument), true, true);
 		}
 		else {
-			return response(request, supplier, supplier(supplier), null);
+			return response(request, supplier, supplier(supplier), null, true);
 		}
 	}
 

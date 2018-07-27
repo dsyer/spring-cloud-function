@@ -16,6 +16,7 @@
 package org.springframework.cloud.function.flux;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -48,6 +49,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestClientException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -234,13 +236,17 @@ public class FluxRestApplicationTests {
 	}
 
 	@Test
-	public void uppercaseGet() {
-		assertThat(rest.getForObject("/uppercase/foo", String.class)).isEqualTo("[FOO]");
+	public void uppercaseGet() throws Exception {
+		assertThat(rest.exchange(RequestEntity.get(new URI("/uppercase/foo"))
+				.accept(MediaType.TEXT_PLAIN).build(), String.class).getBody())
+						.isEqualTo("[FOO]");
 	}
 
 	@Test
-	public void convertGet() {
-		assertThat(rest.getForObject("/wrap/123", String.class)).isEqualTo("..123..");
+	public void convertGet() throws Exception {
+		assertThat(rest.exchange(RequestEntity.get(new URI("/wrap/123"))
+				.accept(MediaType.TEXT_PLAIN).build(), String.class).getBody())
+						.isEqualTo("..123..");
 	}
 
 	@Test
@@ -253,11 +259,13 @@ public class FluxRestApplicationTests {
 
 	@Test
 	public void uppercaseJsonStream() throws Exception {
-		assertThat(rest
-				.exchange(RequestEntity.post(new URI("/maps"))
-						.contentType(MediaType.APPLICATION_JSON)
-						.body("[{\"value\":\"foo\"},{\"value\":\"bar\"}]"), String.class)
-				.getBody()).isEqualTo("[{\"value\":\"FOO\"},{\"value\":\"BAR\"}]");
+		assertThat(
+				rest.exchange(
+						RequestEntity.post(new URI("/maps"))
+								.contentType(MediaType.APPLICATION_JSON)
+								.body("[{\"value\":\"foo\"},{\"value\":\"bar\"}]"),
+						String.class).getBody())
+								.isEqualTo("[{\"value\":\"FOO\"},{\"value\":\"BAR\"}]");
 	}
 
 	@Test
@@ -292,13 +300,15 @@ public class FluxRestApplicationTests {
 		}
 
 		@GetMapping("/uppercase/{id}")
-		public Mono<?> uppercaseGet(@PathVariable String id) {
-			return Mono.just(id).map(value -> "[" + value.trim().toUpperCase() + "]");
+		public Mono<ResponseEntity<?>> uppercaseGet(@PathVariable String id) {
+			return Mono.just(id).map(value -> "[" + value.trim().toUpperCase() + "]")
+					.flatMap(body -> Mono.just(ResponseEntity.ok(body)));
 		}
 
 		@GetMapping("/wrap/{id}")
-		public Mono<?> wrapGet(@PathVariable int id) {
-			return Mono.just(id).log().map(value -> ".." + value + "..");
+		public Mono<ResponseEntity<?>> wrapGet(@PathVariable int id) {
+			return Mono.just(id).log().map(value -> ".." + value + "..")
+					.flatMap(body -> Mono.just(ResponseEntity.ok(body)));
 		}
 
 		@GetMapping("/entity/{id}")

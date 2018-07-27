@@ -198,18 +198,27 @@ public class HttpGetIntegrationTests {
 	}
 
 	@Test
-	public void postMoreFoo() {
-		assertThat(rest.getForObject("/post/more/foo", String.class)).isEqualTo("(FOO)");
+	public void postMoreFoo() throws Exception {
+		ResponseEntity<String> result = rest.exchange(RequestEntity
+				.get(new URI("/post/more/foo")).accept(MediaType.TEXT_PLAIN).build(),
+				String.class);
+		assertThat(result.getBody()).isEqualTo("(FOO)");
 	}
 
 	@Test
-	public void uppercaseGet() {
-		assertThat(rest.getForObject("/uppercase/foo", String.class)).isEqualTo("(FOO)");
+	public void uppercaseGet() throws Exception {
+		ResponseEntity<String> result = rest.exchange(RequestEntity
+				.get(new URI("/uppercase/foo")).accept(MediaType.TEXT_PLAIN).build(),
+				String.class);
+		assertThat(result.getBody()).isEqualTo("(FOO)");
 	}
 
 	@Test
-	public void convertGet() {
-		assertThat(rest.getForObject("/wrap/123", String.class)).isEqualTo("..123..");
+	public void convertGet() throws Exception {
+		ResponseEntity<String> result = rest.exchange(RequestEntity
+				.get(new URI("/wrap/123")).accept(MediaType.TEXT_PLAIN).build(),
+				String.class);
+		assertThat(result.getBody()).isEqualTo("..123..");
 	}
 
 	@Test

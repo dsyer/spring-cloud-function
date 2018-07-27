@@ -75,6 +75,7 @@ public class HttpPostIntegrationTests {
 	public void init() {
 		test.list.clear();
 	}
+
 	@Test
 	public void qualifierFoos() throws Exception {
 		ResponseEntity<String> result = rest.exchange(RequestEntity.post(new URI("/foos"))
@@ -112,8 +113,7 @@ public class HttpPostIntegrationTests {
 				.body("[{\"value\":\"foo\"},{\"value\":\"bar\"}]"), String.class);
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
 		assertThat(test.list).hasSize(2);
-		assertThat(result.getBody())
-				.isEqualTo(null);
+		assertThat(result.getBody()).isEqualTo(null);
 	}
 
 	@Test
@@ -224,11 +224,10 @@ public class HttpPostIntegrationTests {
 
 	@Test
 	public void singleValuedText() throws Exception {
-		ResponseEntity<String> result = rest
-				.exchange(
-						RequestEntity.post(new URI("/bareUppercase"))
-								.contentType(MediaType.TEXT_PLAIN).body("foo"),
-						String.class);
+		ResponseEntity<String> result = rest.exchange(
+				RequestEntity.post(new URI("/bareUppercase")).accept(MediaType.TEXT_PLAIN)
+						.contentType(MediaType.TEXT_PLAIN).body("foo"),
+				String.class);
 		assertThat(result.getBody()).isEqualTo("(FOO)");
 	}
 

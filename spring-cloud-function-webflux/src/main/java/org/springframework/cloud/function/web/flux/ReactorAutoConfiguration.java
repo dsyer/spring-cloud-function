@@ -42,7 +42,7 @@ import reactor.core.publisher.Flux;
 @Configuration
 @ConditionalOnWebApplication
 @ConditionalOnClass({ Flux.class, AsyncHandlerMethodReturnValueHandler.class })
-@Import(FunctionController.class)
+@Import({FunctionController.class, RequestProcessor.class})
 @AutoConfigureAfter({ JacksonAutoConfiguration.class, GsonAutoConfiguration.class })
 public class ReactorAutoConfiguration {
 

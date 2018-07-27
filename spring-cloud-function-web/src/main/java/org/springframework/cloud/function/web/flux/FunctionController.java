@@ -99,12 +99,15 @@ public class FunctionController {
 		}
 		body = body.trim();
 		Object input;
+		Class<?> inputType = inspector.getInputType(function);
 		if (body.startsWith("[")) {
-			input = mapper.toList(body, inspector.getInputType(function));
+			input = mapper.toList(body, inputType);
 		}
 		else {
-			if (body.startsWith("{")) {
-				input = mapper.toSingle(body, inspector.getInputType(function));
+			if (inputType == String.class) {
+				input = body;
+			} else if (body.startsWith("{")) {
+				input = mapper.toSingle(body, inputType);
 			}
 			else if (body.startsWith("\"")) {
 				input = body.substring(1, body.length() - 2);
@@ -145,7 +148,7 @@ public class FunctionController {
 			flux = flux.log();
 		}
 		if (inspector.isMessage(function)) {
-			flux = messages(request, function==null ? consumer : function, flux);
+			flux = messages(request, function == null ? consumer : function, flux);
 		}
 		if (function != null) {
 			Flux<?> result = Flux.from(function.apply(flux));

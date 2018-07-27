@@ -89,19 +89,32 @@ public class FunctionController {
 		if (function == null) {
 			function = request.getAttribute(WebRequestConstants.CONSUMER);
 		}
-		return post(request, null, request.getFormData().block());
+		return post(request, null, request.getFormData().block(), null, false);
 	}
 
 	@PostMapping(path = "/**")
 	@ResponseBody
 	public Mono<ResponseEntity<?>> post(ServerWebExchange request,
 			@RequestBody(required = false) String body) {
+		return post(request, body, false);
+	}
+	
+	@PostMapping(path = "/**", produces=MediaType.TEXT_EVENT_STREAM_VALUE)
+	@ResponseBody
+	public Mono<ResponseEntity<?>> postStream(ServerWebExchange request,
+			@RequestBody(required = false) String body) {
+		return post(request, body, true);
+	}
+
+	private Mono<ResponseEntity<?>> post(ServerWebExchange request,
+			String body, boolean stream) {
+
 		Object function = request.getAttribute(WebRequestConstants.FUNCTION);
 		if (function == null) {
 			function = request.getAttribute(WebRequestConstants.CONSUMER);
 		}
 		if (!StringUtils.hasText(body)) {
-			return post(request, (List<?>) null, null);
+			return post(request, (List<?>) null, null, null, stream);
 		}
 		body = body.trim();
 		Object input;
@@ -119,19 +132,14 @@ public class FunctionController {
 				input = converter.convert(function, body);
 			}
 		}
-		return post(request, input);
-	}
-
-	private Mono<ResponseEntity<?>> post(ServerWebExchange request, Object body) {
-		if (body instanceof List) {
-			return post(request, (List<?>) body, null);
+		if (input instanceof List) {
+			return post(request, (List<?>) input, null, false, stream);
 		}
-		request.getAttributes().put(WebRequestConstants.INPUT_SINGLE, true);
-		return post(request, Collections.singletonList(body), null);
+		return post(request, Collections.singletonList(input), null, true, stream);
 	}
 
 	private Mono<ResponseEntity<?>> post(ServerWebExchange request, List<?> body,
-			MultiValueMap<String, String> params) {
+			MultiValueMap<String, String> params, Boolean single, boolean stream) {
 
 		@SuppressWarnings("unchecked")
 		Function<Publisher<?>, Publisher<?>> function = (Function<Publisher<?>, Publisher<?>>) request
@@ -139,7 +147,6 @@ public class FunctionController {
 		@SuppressWarnings("unchecked")
 		Consumer<Publisher<?>> consumer = (Consumer<Publisher<?>>) request
 				.getAttribute(WebRequestConstants.CONSUMER);
-		Boolean single = (Boolean) request.getAttribute(WebRequestConstants.INPUT_SINGLE);
 
 		FluxFormRequest form = FluxFormRequest
 				.from(request.getRequest().getQueryParams());
@@ -156,6 +163,12 @@ public class FunctionController {
 		}
 		if (function != null) {
 			Flux<?> result = Flux.from(function.apply(flux));
+			if (logger.isDebugEnabled()) {
+				logger.debug("Handled POST with function");
+			}
+			if (stream) {
+				return stream(request, function, result);
+			}
 			return response(request, function, result, single, false);
 		}
 
@@ -182,8 +195,8 @@ public class FunctionController {
 		builder.headers(HeaderUtils.fromMessage(message.getHeaders(), headers));
 	}
 
-	private Mono<ResponseEntity<Publisher<?>>> stream(ServerWebExchange request, Object handler,
-			Publisher<?> result) {
+	private Mono<ResponseEntity<?>> stream(ServerWebExchange request,
+			Object handler, Publisher<?> result) {
 
 		BodyBuilder builder = ResponseEntity.ok();
 		if (inspector.isMessage(handler)) {
@@ -260,9 +273,9 @@ public class FunctionController {
 		}
 	}
 
-	@GetMapping(path = "/**", produces=MediaType.TEXT_EVENT_STREAM_VALUE)
+	@GetMapping(path = "/**", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
 	@ResponseBody
-	public Mono<ResponseEntity<Publisher<?>>> getStream(ServerWebExchange request) {
+	public Mono<ResponseEntity<?>> getStream(ServerWebExchange request) {
 		@SuppressWarnings("unchecked")
 		Function<Publisher<?>, Publisher<?>> function = (Function<Publisher<?>, Publisher<?>>) request
 				.getAttribute(WebRequestConstants.FUNCTION);

@@ -27,6 +27,7 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.reactivestreams.Publisher;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -274,6 +275,13 @@ public class FluxRestApplicationTests {
 						.isEqualTo(sse("[FOO]", "[BAR]"));
 	}
 
+	@Test
+	public void altSSE() throws Exception {
+		assertThat(rest.exchange(RequestEntity.post(new URI("/alt")).accept(EVENT_STREAM)
+				.contentType(MediaType.APPLICATION_JSON).body("[\"foo\",\"bar\"]"),
+				String.class).getBody()).isEqualTo(sse("[FOO]", "[BAR]"));
+	}
+
 	private String sse(String... values) {
 		return "data:" + StringUtils.arrayToDelimitedString(values, "\n\ndata:") + "\n\n";
 	}
@@ -289,6 +297,14 @@ public class FluxRestApplicationTests {
 		public Flux<?> uppercase(@RequestBody List<String> flux) {
 			return Flux.fromIterable(flux).log()
 					.map(value -> "[" + value.trim().toUpperCase() + "]");
+		}
+
+		@PostMapping({ "/alt" })
+		public Mono<ResponseEntity<?>> alt(@RequestBody List<String> flux) {
+			Publisher<?> result = Flux.fromIterable(flux)
+					.map(value -> "[" + value.trim().toUpperCase() + "]");
+			return Flux.from(result).log()
+					.then(Mono.fromSupplier(() -> ResponseEntity.ok(result)));
 		}
 
 		@PostMapping("/upFoos")

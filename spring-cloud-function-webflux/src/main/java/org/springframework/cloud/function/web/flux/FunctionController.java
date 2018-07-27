@@ -122,8 +122,7 @@ public class FunctionController {
 		return post(request, input);
 	}
 
-	private Mono<ResponseEntity<?>> post(ServerWebExchange request,
-			Object body) {
+	private Mono<ResponseEntity<?>> post(ServerWebExchange request, Object body) {
 		if (body instanceof List) {
 			return post(request, (List<?>) body, null);
 		}
@@ -131,8 +130,8 @@ public class FunctionController {
 		return post(request, Collections.singletonList(body), null);
 	}
 
-	private Mono<ResponseEntity<?>> post(ServerWebExchange request,
-			List<?> body, MultiValueMap<String, String> params) {
+	private Mono<ResponseEntity<?>> post(ServerWebExchange request, List<?> body,
+			MultiValueMap<String, String> params) {
 
 		@SuppressWarnings("unchecked")
 		Function<Publisher<?>, Publisher<?>> function = (Function<Publisher<?>, Publisher<?>>) request
@@ -183,8 +182,22 @@ public class FunctionController {
 		builder.headers(HeaderUtils.fromMessage(message.getHeaders(), headers));
 	}
 
-	private Mono<ResponseEntity<?>> response(ServerWebExchange request,
-			Object handler, Publisher<?> result, Boolean single, boolean getter) {
+	private Mono<ResponseEntity<Publisher<?>>> stream(ServerWebExchange request, Object handler,
+			Publisher<?> result) {
+
+		BodyBuilder builder = ResponseEntity.ok();
+		if (inspector.isMessage(handler)) {
+			result = Flux.from(result)
+					.doOnNext(value -> addHeaders(builder, (Message<?>) value))
+					.map(message -> MessageUtils.unpack(handler, message).getPayload());
+		}
+
+		Publisher<?> output = result;
+		return Flux.from(output).then(Mono.fromSupplier(() -> builder.body(output)));
+	}
+
+	private Mono<ResponseEntity<?>> response(ServerWebExchange request, Object handler,
+			Publisher<?> result, Boolean single, boolean getter) {
 
 		BodyBuilder builder = ResponseEntity.ok();
 		if (inspector.isMessage(handler)) {
@@ -203,10 +216,10 @@ public class FunctionController {
 			result = Mono.from(result);
 		}
 		Publisher<?> output = result;
-		if (result instanceof Mono) {
+		if (output instanceof Mono) {
 			return Mono.from(output).flatMap(body -> Mono.just(builder.body(body)));
 		}
-		return Flux.from(result).collectList()
+		return Flux.from(output).collectList()
 				.flatMap(body -> Mono.just(builder.body(body)));
 	}
 
@@ -244,6 +257,25 @@ public class FunctionController {
 		}
 		else {
 			return response(request, supplier, supplier(supplier), null, true);
+		}
+	}
+
+	@GetMapping(path = "/**", produces=MediaType.TEXT_EVENT_STREAM_VALUE)
+	@ResponseBody
+	public Mono<ResponseEntity<Publisher<?>>> getStream(ServerWebExchange request) {
+		@SuppressWarnings("unchecked")
+		Function<Publisher<?>, Publisher<?>> function = (Function<Publisher<?>, Publisher<?>>) request
+				.getAttribute(WebRequestConstants.FUNCTION);
+		@SuppressWarnings("unchecked")
+		Supplier<Publisher<?>> supplier = (Supplier<Publisher<?>>) request
+				.getAttribute(WebRequestConstants.SUPPLIER);
+		String argument = (String) request.getAttribute(WebRequestConstants.ARGUMENT);
+
+		if (function != null) {
+			return stream(request, function, value(function, argument));
+		}
+		else {
+			return stream(request, supplier, supplier(supplier));
 		}
 	}
 

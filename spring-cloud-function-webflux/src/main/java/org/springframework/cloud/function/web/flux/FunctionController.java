@@ -98,16 +98,16 @@ public class FunctionController {
 			@RequestBody(required = false) String body) {
 		return post(request, body, false);
 	}
-	
-	@PostMapping(path = "/**", produces=MediaType.TEXT_EVENT_STREAM_VALUE)
+
+	@PostMapping(path = "/**", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
 	@ResponseBody
 	public Mono<ResponseEntity<?>> postStream(ServerWebExchange request,
 			@RequestBody(required = false) String body) {
 		return post(request, body, true);
 	}
 
-	private Mono<ResponseEntity<?>> post(ServerWebExchange request,
-			String body, boolean stream) {
+	private Mono<ResponseEntity<?>> post(ServerWebExchange request, String body,
+			boolean stream) {
 
 		Object function = request.getAttribute(WebRequestConstants.FUNCTION);
 		if (function == null) {
@@ -118,12 +118,16 @@ public class FunctionController {
 		}
 		body = body.trim();
 		Object input;
-		if (body.startsWith("[")) {
-			input = mapper.toList(body, inspector.getInputType(function));
+		Class<?> inputType = inspector.getInputType(function);
+		if (inputType == String.class) {
+			input = body;
+		}
+		else if (body.startsWith("[")) {
+			input = mapper.toList(body, inputType);
 		}
 		else {
 			if (body.startsWith("{")) {
-				input = mapper.toSingle(body, inspector.getInputType(function));
+				input = mapper.toSingle(body, inputType);
 			}
 			else if (body.startsWith("\"")) {
 				input = body.substring(1, body.length() - 2);
@@ -195,8 +199,8 @@ public class FunctionController {
 		builder.headers(HeaderUtils.fromMessage(message.getHeaders(), headers));
 	}
 
-	private Mono<ResponseEntity<?>> stream(ServerWebExchange request,
-			Object handler, Publisher<?> result) {
+	private Mono<ResponseEntity<?>> stream(ServerWebExchange request, Object handler,
+			Publisher<?> result) {
 
 		BodyBuilder builder = ResponseEntity.ok();
 		if (inspector.isMessage(handler)) {

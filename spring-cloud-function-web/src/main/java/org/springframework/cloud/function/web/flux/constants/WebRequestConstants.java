@@ -33,9 +33,5 @@ public abstract class WebRequestConstants {
 			+ ".argument";
 	public static final String HANDLER = WebRequestConstants.class.getName()
 			+ ".handler";
-	public static final String INPUT_SINGLE = WebRequestConstants.class.getName()
-			+ ".input_single";
-	public static final String OUTPUT_SINGLE = WebRequestConstants.class.getName()
-			+ ".output_single";
 
 }

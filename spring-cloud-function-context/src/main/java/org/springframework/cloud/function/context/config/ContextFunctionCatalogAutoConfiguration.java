@@ -129,7 +129,8 @@ public class ContextFunctionCatalogAutoConfiguration {
 
 		@Override
 		public <T> void register(FunctionRegistration<T> registration) {
-			Assert.notEmpty(registration.getNames(), "'registration' must contain at least one name before it is registered in catalog.");
+			Assert.notEmpty(registration.getNames(),
+					"'registration' must contain at least one name before it is registered in catalog.");
 			processor.register(registration);
 		}
 
@@ -233,7 +234,7 @@ public class ContextFunctionCatalogAutoConfiguration {
 			if (function == null || !names.containsKey(function)) {
 				return null;
 			}
-			return new FunctionRegistration<>(function).name(names.get(function))
+			return new FunctionRegistration<>(function, names.get(function))
 					.type(findType(function).getType());
 		}
 
@@ -386,17 +387,21 @@ public class ContextFunctionCatalogAutoConfiguration {
 				targets.put(registration.getTarget(), key);
 			}
 
-			Stream.concat(consumers.entrySet().stream(), Stream.concat(suppliers.entrySet().stream(), functions.entrySet().stream()))
-				.forEach(entry -> {
-					if (!targets.containsKey(entry.getValue())) {
-						FunctionRegistration<Object> target = new FunctionRegistration<Object>(
-								entry.getValue()).names(getAliases(entry.getKey()));
-						targets.put(target.getTarget(), entry.getKey());
-						registrations.add(target);
-					}
-				});
+			Stream.concat(consumers.entrySet().stream(), Stream
+					.concat(suppliers.entrySet().stream(), functions.entrySet().stream()))
+					.forEach(entry -> {
+						if (!targets.containsKey(entry.getValue())) {
+							String key = entry.getKey();
+							FunctionRegistration<Object> target = new FunctionRegistration<Object>(
+									entry.getValue(), getQualifier(key))
+											.names(getAliases(key));
+							targets.put(target.getTarget(), entry.getKey());
+							registrations.add(target);
+						}
+					});
 			// Wrap the functions so they handle reactive inputs and outputs
-			registrations.forEach(registration -> wrap(registration, targets.get(registration.getTarget())));
+			registrations.forEach(registration -> wrap(registration,
+					targets.get(registration.getTarget())));
 			return registrations;
 		}
 
@@ -406,7 +411,6 @@ public class ContextFunctionCatalogAutoConfiguration {
 			if (value.equals(key) && registry != null) {
 				names.addAll(Arrays.asList(registry.getAliases(key)));
 			}
-			names.add(value);
 			return names;
 		}
 

@@ -17,7 +17,6 @@
 package org.springframework.cloud.function.web.source;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -52,14 +51,9 @@ public class SimpleRequestBuilder implements RequestBuilder {
 	}
 
 	@Override
-	public URI uri(String destination) {
-		try {
-			return new URI(environment
-					.resolvePlaceholders(baseUrl.replace("${destination}", destination)));
-		}
-		catch (URISyntaxException e) {
-			throw new IllegalStateException("Cannot create URI", e);
-		}
+	public URI uri(String destination) throws Exception {
+		return new URI(environment
+				.resolvePlaceholders(baseUrl.replace("${destination}", destination)));
 	}
 
 	public void setTemplateUrl(String baseUrl) {

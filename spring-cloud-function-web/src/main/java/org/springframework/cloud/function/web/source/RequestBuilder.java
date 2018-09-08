@@ -26,7 +26,7 @@ import org.springframework.http.HttpHeaders;
  */
 public interface RequestBuilder {
 	
-	URI uri(String destination);
+	URI uri(String destination) throws Exception;
 	
 	HttpHeaders headers(String destination, Object value);
 

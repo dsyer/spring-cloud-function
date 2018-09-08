@@ -118,7 +118,11 @@ public class SupplierExporter implements SmartLifecycle {
 	}
 
 	private URI uri(String destination) {
-		return requestBuilder.uri(destination);
+		try {
+			return requestBuilder.uri(destination);
+		} catch (Exception e) {
+			throw new IllegalStateException("Cannot resolve URI", e);
+		}
 	}
 
 	public boolean isOk() {

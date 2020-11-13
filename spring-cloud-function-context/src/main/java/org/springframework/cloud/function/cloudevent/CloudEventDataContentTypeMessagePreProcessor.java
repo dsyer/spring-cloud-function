@@ -31,17 +31,17 @@ import org.springframework.util.MimeType;
 import org.springframework.util.MimeTypeUtils;
 
 /**
- * A Cloud Events specific pre-processor that is added to {@link SmartCompositeMessageConverter}
- * to potentially modify incoming message.
- * <br><br>
- * For Cloud Event coming in binary-mode such modification implies determining
- * content type of the 'data' attribute (see {@link #getDataContentType(MessageHeaders)}
- * of Cloud Event and creating a new {@link Message} with its `contentType` set to such
- * content type while copying the rest of the headers.
- * <br><br>
+ * A Cloud Events specific pre-processor that is added to
+ * {@link SmartCompositeMessageConverter} to potentially modify incoming message. <br>
+ * <br>
+ * For Cloud Event coming in binary-mode such modification implies determining content
+ * type of the 'data' attribute (see {@link #getDataContentType(MessageHeaders)} of Cloud
+ * Event and creating a new {@link Message} with its `contentType` set to such content
+ * type while copying the rest of the headers. <br>
+ * <br>
  * Similar to Cloud Event coming in binary-mode, the Cloud Event coming in structured-mode
- * such modification also implies determining content type of the 'data' attribute
- * (see {@link #getDataContentType(MessageHeaders)}...
+ * such modification also implies determining content type of the 'data' attribute (see
+ * {@link #getDataContentType(MessageHeaders)}...
  *
  * @author Oleg Zhurakousky
  * @since 3.1
@@ -62,17 +62,19 @@ public class CloudEventDataContentTypeMessagePreProcessor implements Function<Me
 	@SuppressWarnings("unchecked")
 	@Override
 	public Message<?> apply(Message<?> inputMessage) {
-		if (CloudEventMessageUtils.isBinary(inputMessage.getHeaders())) {
-			String dataContentType = this.getDataContentType(inputMessage.getHeaders());
-			Message<?> message = MessageBuilder.fromMessage(inputMessage)
+		MessageHeaders canonicalized = CloudEventMessageUtils.canonicalize(inputMessage.getHeaders());
+		if (CloudEventMessageUtils.isBinary(canonicalized)) {
+			String dataContentType = this.getDataContentType(canonicalized);
+			Message<?> message = MessageBuilder.withPayload(inputMessage.getPayload()).copyHeaders(canonicalized)
 					.setHeader(MessageHeaders.CONTENT_TYPE, dataContentType)
-//					.setHeader("originalContentType", inputMessage.getHeaders().get(MessageHeaders.CONTENT_TYPE)) not sure about it
+					// .setHeader("originalContentType",
+					// canonicalized.get(MessageHeaders.CONTENT_TYPE)) not sure about it
 					.build();
 			return message;
 		}
 		else if (this.isStructured(inputMessage)) {
-			MimeType contentType = this.contentTypeResolver.resolve(inputMessage.getHeaders());
-			String dataContentType = this.getDataContentType(inputMessage.getHeaders());
+			MimeType contentType = this.contentTypeResolver.resolve(canonicalized);
+			String dataContentType = this.getDataContentType(canonicalized);
 			String suffix = contentType.getSubtypeSuffix();
 			MimeType cloudEventDeserializationContentType = MimeTypeUtils
 					.parseMimeType(contentType.getType() + "/" + suffix);
@@ -123,4 +125,5 @@ public class CloudEventDataContentTypeMessagePreProcessor implements Function<Me
 		}
 		return false;
 	}
+
 }

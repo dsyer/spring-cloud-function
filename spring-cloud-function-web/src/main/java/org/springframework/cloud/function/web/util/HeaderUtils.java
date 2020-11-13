@@ -22,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.cloud.function.cloudevent.CloudEventMessageUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.messaging.MessageHeaders;
 
@@ -51,6 +52,7 @@ public final class HeaderUtils {
 
 	public static HttpHeaders fromMessage(MessageHeaders headers) {
 		HttpHeaders result = new HttpHeaders();
+		headers = CloudEventMessageUtils.http(headers);
 		for (String name : headers.keySet()) {
 			Object value = headers.get(name);
 			name = name.toLowerCase();
@@ -81,14 +83,13 @@ public final class HeaderUtils {
 		for (String name : headers.keySet()) {
 			Collection<?> values = multi(headers.get(name));
 			name = name.toLowerCase();
-			Object value = values == null ? null
-					: (values.size() == 1 ? values.iterator().next() : values);
+			Object value = values == null ? null : (values.size() == 1 ? values.iterator().next() : values);
 			if (name.toLowerCase().equals(HttpHeaders.CONTENT_TYPE.toLowerCase())) {
 				name = MessageHeaders.CONTENT_TYPE;
 			}
 			map.put(name, value);
 		}
-		return new MessageHeaders(map);
+		return CloudEventMessageUtils.canonicalize(new MessageHeaders(map));
 	}
 
 	private static Collection<?> multi(Object value) {

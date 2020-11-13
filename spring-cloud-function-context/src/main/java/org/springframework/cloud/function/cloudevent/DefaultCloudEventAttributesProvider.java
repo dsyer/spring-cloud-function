@@ -32,14 +32,41 @@ import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 /**
- *
  * @author Oleg Zhurakousky
  * @since 3.1
  *
  */
 public class DefaultCloudEventAttributesProvider implements CloudEventAtttributesProvider, ApplicationContextAware {
 
-	private ConfigurableApplicationContext applicationContext;
+	private String defaultSource = "https://spring.io/default-source";
+
+	private String defaultType = "spring.io.DefaultEventType";
+
+	private String source;
+
+	private String type;
+
+	/**
+	 * @param source the source to set
+	 */
+	public void setSource(String source) {
+		this.source = source;
+	}
+
+	/**
+	 * @param type the type to set
+	 */
+	public void setType(String type) {
+		this.type = type;
+	}
+
+	public void setDefaultSource(String defaultSource) {
+		this.defaultSource = defaultSource;
+	}
+
+	public void setDefaultType(String defaultType) {
+		this.defaultType = defaultType;
+	}
 
 	@Override
 	public CloudEventAttributes get(String ce_id, String ce_specversion, String ce_source, String ce_type) {
@@ -61,33 +88,53 @@ public class DefaultCloudEventAttributesProvider implements CloudEventAtttribute
 	}
 
 	/**
-	 * By default it will copy all the headers while exposing accessor to allow user to modify any of them.
+	 * By default it will copy all the headers while exposing accessor to allow user to
+	 * modify any of them.
 	 */
 	@Override
 	public RequiredAttributeAccessor get(MessageHeaders headers) {
-		return new RequiredAttributeAccessor(headers);
+		return new RequiredAttributeAccessor(headers).setSource(getSource(headers)).setType(getType(null));
 	}
 
 	@Override
 	public Map<String, Object> generateDefaultCloudEventHeaders(Message<?> inputMessage, Object result) {
-		if (inputMessage.getHeaders().containsKey(CloudEventMessageUtils.CE_ID)) { // input is a cloud event
-			String applicationName = this.getApplicationName();
-			return this.get(inputMessage.getHeaders())
-					.setId(UUID.randomUUID().toString())
-					.setType(result.getClass().getName())
-					.setSource(applicationName);
+		if (inputMessage.getHeaders().containsKey(CloudEventMessageUtils.CE_ID)) {
+			// input is a cloud event
+			return this.get(inputMessage.getHeaders()).setId(inputMessage.getHeaders().getId().toString())
+					.setType(getType(result)).setSource(getSource(inputMessage.getHeaders()));
 		}
 		return Collections.emptyMap();
 	}
 
-	@Override
-	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
-		this.applicationContext = (ConfigurableApplicationContext) applicationContext;
+	private String getSource(MessageHeaders headers) {
+		if (this.source != null) {
+			return this.source;
+		}
+		if (headers.containsKey(CloudEventMessageUtils.CE_SOURCE)) {
+			return headers.get(CloudEventMessageUtils.CE_SOURCE, String.class);
+		}
+		return this.defaultSource;
 	}
 
-	private String getApplicationName() {
-		ConfigurableEnvironment environment = this.applicationContext.getEnvironment();
-		String name = environment.getProperty("spring.application.name");
-		return "http://spring.io/" + (StringUtils.hasText(name) ? name : "application-" + this.applicationContext.getId());
+	private String getType(Object result) {
+		if (this.type != null) {
+			return this.type;
+		}
+		// TODO: maybe use default type if result is a generic Map type
+		return result == null ? this.defaultType : result.getClass().getName();
 	}
+
+	@Override
+	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+		if (this.source == null) {
+			this.source = getApplicationName((ConfigurableApplicationContext) applicationContext);
+		}
+	}
+
+	private String getApplicationName(ConfigurableApplicationContext applicationContext) {
+		ConfigurableEnvironment environment = applicationContext.getEnvironment();
+		String name = environment.getProperty("spring.application.name");
+		return "http://spring.io/" + (StringUtils.hasText(name) ? name : applicationContext.getId());
+	}
+
 }
